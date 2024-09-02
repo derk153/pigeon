@@ -77,6 +77,8 @@ defmodule Pigeon.Dispatcher do
 
   use Supervisor
 
+  require Logger
+
   @doc false
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts] do
@@ -112,6 +114,8 @@ defmodule Pigeon.Dispatcher do
   end
 
   def init(opts) do
+    Logger.info("Starting Pigeon.Dispatcher...")
+
     opts =
       opts
       |> Keyword.put(:supervisor, opts[:name] || self())

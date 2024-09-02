@@ -3,6 +3,8 @@ defmodule Pigeon.DispatcherWorker do
 
   use GenServer
 
+  require Logger
+
   def start_link(opts) do
     opts[:adapter] || raise "adapter is not specified"
     GenServer.start_link(__MODULE__, opts)
@@ -10,8 +12,11 @@ defmodule Pigeon.DispatcherWorker do
 
   @impl GenServer
   def init(opts) do
+    Logger.info("Starting Pigeon.DispatcherWorker...")
+
     case opts[:adapter].init(opts) do
       {:ok, state} ->
+        Process.flag(:trap_exit, true)
         Pigeon.Registry.register(opts[:supervisor])
         {:ok, %{adapter: opts[:adapter], state: state}}
 
@@ -30,8 +35,16 @@ defmodule Pigeon.DispatcherWorker do
         {:noreply, %{adapter: adapter, state: new_state}}
 
       {:stop, reason, new_state} ->
+        Logger.warning("Pigeon.DispatcherWorker stopped: #{inspect(reason)}")
+
         {:stop, reason, %{adapter: adapter, state: new_state}}
     end
+  end
+
+  def handle_info({:EXIT, _from, reason} = msg, state) do
+    Logger.warning("Pigeon.DispatcherWorker exited: #{inspect(msg)}")
+
+    {:stop, reason, state}
   end
 
   def handle_info(msg, %{adapter: adapter, state: state}) do
@@ -40,6 +53,8 @@ defmodule Pigeon.DispatcherWorker do
         {:noreply, %{adapter: adapter, state: new_state}}
 
       {:stop, reason, new_state} ->
+        Logger.warning("Pigeon.DispatcherWorker stopped: #{inspect(reason)}")
+
         {:stop, reason, %{adapter: adapter, state: new_state}}
     end
   end
